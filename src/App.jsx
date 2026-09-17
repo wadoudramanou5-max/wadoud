@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import React from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import hero from './assets/jj.jpeg';
 import project1 from './assets/projet.png';
 import project2 from './assets/blog.png';
 import './App.css';
+
+gsap.registerPlugin(ScrollTrigger);
 
 // Données statiques
 const technologies = [
@@ -52,6 +56,14 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [fadeOut, setFadeOut] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Refs pour les animations GSAP
+  const heroTitleRef = useRef(null);
+  const heroTextRef = useRef(null);
+  const heroButtonsRef = useRef(null);
+  const heroImageRef = useRef(null);
+  const navbarRef = useRef(null);
 
   // 🔹 Préchargement réel des images + progression fluide
   useEffect(() => {
@@ -91,33 +103,151 @@ function App() {
     return () => clearTimeout(safety);
   }, []);
 
-  // 🔹 Empêcher le scroll pendant le chargement
+  // 🔹 Empêcher le scroll pendant le chargement ou quand le menu mobile est ouvert
   useEffect(() => {
-    document.body.style.overflow = loading ? 'hidden' : '';
+    document.body.style.overflow = (loading || menuOpen) ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
-  }, [loading]);
+  }, [loading, menuOpen]);
 
-  // 🔹 Animation au scroll + ancres (démarre après le loader)
+  // 🔹 Fermer le menu mobile automatiquement si on repasse en desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 760) setMenuOpen(false);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // 🔹 Animation d'entrée GSAP (navbar + hero) au chargement de la page
   useEffect(() => {
     if (loading) return;
 
-    const sections = document.querySelectorAll(
-      '#accueil, #competences, #services, #temoignages, #projets, #contact'
-    );
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
-    }, {
-      threshold: 0.1,
-      rootMargin: '0px 0px -50px 0px'
+      tl.from(navbarRef.current, {
+        y: -60,
+        opacity: 0,
+        duration: 0.7,
+      })
+        .from(
+          heroTitleRef.current,
+          { y: 40, opacity: 0, duration: 0.8 },
+          '-=0.3'
+        )
+        .from(
+          heroTextRef.current,
+          { y: 30, opacity: 0, duration: 0.7 },
+          '-=0.5'
+        )
+        .from(
+          heroButtonsRef.current,
+          { y: 20, opacity: 0, duration: 0.6 },
+          '-=0.4'
+        )
+        .from(
+          heroImageRef.current,
+          { scale: 0.85, opacity: 0, duration: 0.9, ease: 'back.out(1.4)' },
+          '-=0.7'
+        );
     });
 
-    sections.forEach(section => observer.observe(section));
+    return () => ctx.revert();
+  }, [loading]);
 
+  // 🔹 Animations au scroll avec GSAP ScrollTrigger (remplace l'IntersectionObserver)
+  useEffect(() => {
+    if (loading) return;
+
+    const ctx = gsap.context(() => {
+      // Titres de section : fondu + légère montée
+      gsap.utils.toArray('.container h2').forEach((title) => {
+        gsap.from(title, {
+          y: 40,
+          opacity: 0,
+          duration: 0.7,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: title,
+            start: 'top 85%',
+            toggleActions: 'play none none reverse',
+          },
+        });
+      });
+
+      // Cartes (compétences, services, témoignages) : effet cascade
+      gsap.utils
+        .toArray('#competences, #services, #temoignages')
+        .forEach((section) => {
+          const cards = section.querySelectorAll('.card');
+          if (!cards.length) return;
+          gsap.from(cards, {
+            y: 50,
+            opacity: 0,
+            duration: 0.6,
+            ease: 'power2.out',
+            stagger: 0.12,
+            scrollTrigger: {
+              trigger: section,
+              start: 'top 80%',
+              toggleActions: 'play none none reverse',
+            },
+          });
+        });
+
+      // Projets : présentation premium — voile qui se lève, image en parallax, contenu en cascade
+      gsap.utils.toArray('.project-card').forEach((card) => {
+        const wipe = card.querySelector('.project-media-wipe');
+        const img = card.querySelector('.project-media img');
+        const index = card.querySelector('.project-index');
+        const content = card.querySelectorAll('.project-content > *');
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: card,
+            start: 'top 78%',
+            toggleActions: 'play none none reverse',
+          },
+        });
+
+        tl.to(wipe, { scaleX: 0, duration: 1, ease: 'power4.inOut' })
+          .from(img, { scale: 1.3, duration: 1.3, ease: 'power3.out' }, 0)
+          .from(index, { opacity: 0, x: -12, duration: 0.5, ease: 'power2.out' }, 0.25)
+          .from(
+            content,
+            { y: 28, opacity: 0, duration: 0.65, stagger: 0.09, ease: 'power3.out' },
+            0.4
+          );
+
+        // Léger parallax de l'image pendant le scroll
+        gsap.to(img, {
+          yPercent: 10,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: card,
+            start: 'top bottom',
+            end: 'bottom top',
+            scrub: true,
+          },
+        });
+      });
+
+      // Section Contact : fondu global
+      gsap.from('#contact > *', {
+        y: 30,
+        opacity: 0,
+        duration: 0.7,
+        ease: 'power3.out',
+        stagger: 0.1,
+        scrollTrigger: {
+          trigger: '#contact',
+          start: 'top 85%',
+          toggleActions: 'play none none reverse',
+        },
+      });
+    });
+
+    // Ancres de navigation en scroll fluide
     const handleAnchorClick = (e) => {
       const link = e.currentTarget;
       const href = link.getAttribute('href');
@@ -132,11 +262,12 @@ function App() {
     };
 
     const anchorLinks = document.querySelectorAll('a[href^="#"]');
-    anchorLinks.forEach(link => link.addEventListener('click', handleAnchorClick));
+    anchorLinks.forEach((link) => link.addEventListener('click', handleAnchorClick));
 
     return () => {
-      sections.forEach(section => observer.unobserve(section));
-      anchorLinks.forEach(link => link.removeEventListener('click', handleAnchorClick));
+      anchorLinks.forEach((link) => link.removeEventListener('click', handleAnchorClick));
+      ctx.revert();
+      ScrollTrigger.getAll().forEach((st) => st.kill());
     };
   }, [loading]);
 
@@ -169,8 +300,9 @@ function App() {
   return (
     <>
       {/* Navbar */}
-      <nav className="navbar">
+      <nav className={`navbar ${menuOpen ? 'menu-open' : ''}`} ref={navbarRef}>
         <span className="logo">Wadoud.Dev</span>
+
         <div className="nav-links">
           <a href="#accueil">Accueil</a>
           <a href="#competences">Compétences</a>
@@ -178,22 +310,42 @@ function App() {
           <a href="#projets">Projets</a>
           <a href="#contact">Contact</a>
         </div>
+
+        <button
+          type="button"
+          className={`menu-toggle ${menuOpen ? 'active' : ''}`}
+          onClick={() => setMenuOpen((prev) => !prev)}
+          aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+          aria-expanded={menuOpen}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <div className="mobile-menu" aria-hidden={!menuOpen}>
+          <a href="#accueil" onClick={() => setMenuOpen(false)}>Accueil</a>
+          <a href="#competences" onClick={() => setMenuOpen(false)}>Compétences</a>
+          <a href="#services" onClick={() => setMenuOpen(false)}>Services</a>
+          <a href="#projets" onClick={() => setMenuOpen(false)}>Projets</a>
+          <a href="#contact" onClick={() => setMenuOpen(false)}>Contact</a>
+        </div>
       </nav>
 
       {/* Accueil */}
       <section id="accueil" className="container">
         <div className="left-column">
-          <h1>Développeur <br /> fullstack</h1>
-          <p>
+          <h1 ref={heroTitleRef}>Développeur <br /> fullstack</h1>
+          <p ref={heroTextRef}>
             Je conçois des applications <em>web</em> élégantes et fonctionnelles pour lancer votre entreprise.
           </p>
           <p>Développeur fullstack passionné par la création d'expériences numériques exceptionnelles.</p>
-          <div className="button-container">
+          <div className="button-container" ref={heroButtonsRef}>
             <a href="#projets">Voir mes projets</a>
             <a href="#contact">Me contacter</a>
           </div>
         </div>
-        <div className="right">
+        <div className="right" ref={heroImageRef}>
           <img src={hero} alt="Photo de Wadoud" />
         </div>
       </section>
@@ -242,16 +394,28 @@ function App() {
 
       {/* Projets */}
       <section id="projets" className="container">
-        <h2>Projets déjà réalisés</h2>
+        <div className="projects-heading">
+          <span className="section-label">Travaux sélectionnés</span>
+          <h2>Projets déjà réalisés</h2>
+        </div>
         <div className="project-image">
           {projects.map((project, index) => (
-            <div className="card" key={index}>
-              <img src={project.image} alt={project.name} />
-              <h3>{project.name}</h3>
-              <p>{project.description}</p>
-              <a href={project.link} target="_blank" rel="noopener noreferrer">
-                Voir le projet
-              </a>
+            <div className="card project-card" key={index}>
+              <span className="project-index">{String(index + 1).padStart(2, '0')}</span>
+              <div className="project-media">
+                <div className="project-media-wipe"></div>
+                <img src={project.image} alt={project.name} />
+              </div>
+              <div className="project-content">
+                <h3>{project.name}</h3>
+                <p>{project.description}</p>
+                <a href={project.link} target="_blank" rel="noopener noreferrer" className="project-link">
+                  <span>Voir le projet</span>
+                  <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5 15L15 5M15 5H7M15 5V13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </a>
+              </div>
             </div>
           ))}
         </div>

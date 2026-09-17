@@ -41,6 +41,7 @@ body {
   font-size: 17px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 h1, h2, h3 {
@@ -73,26 +74,8 @@ img {
   padding: 120px 32px;
 }
 
-/* Apparition au scroll — un seul mouvement discret par section */
-#accueil, #competences, #services, #temoignages, #projets, #contact {
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
-}
-
-#accueil.visible, #competences.visible, #services.visible,
-#temoignages.visible, #projets.visible, #contact.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #accueil, #competences, #services, #temoignages, #projets, #contact {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-}
+/* L'apparition au scroll est gérée par GSAP/ScrollTrigger (voir App.jsx) :
+   les sections ne doivent plus être masquées ici par défaut. */
 
 /* ---------- Navbar ---------- */
 
@@ -130,6 +113,96 @@ img {
 
 .nav-links a:hover {
   color: var(--accent);
+}
+
+/* ---------- Navbar mobile (hamburger + panneau déroulant) ---------- */
+
+.menu-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  z-index: 110;
+}
+
+.menu-toggle span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: var(--ink);
+  border-radius: 2px;
+  transition: transform 0.3s ease, opacity 0.25s ease;
+}
+
+.menu-toggle.active span:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+}
+
+.menu-toggle.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.menu-toggle.active span:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
+
+.mobile-menu {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .nav-links {
+    display: none;
+  }
+
+  .menu-toggle {
+    display: flex;
+  }
+
+  .mobile-menu {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+  }
+
+  .navbar.menu-open .mobile-menu {
+    max-height: 320px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .mobile-menu a {
+    padding: 18px 32px;
+    font-size: 1rem;
+    color: var(--ink-soft);
+    border-top: 1px solid var(--line);
+    transition: color 0.2s ease, background 0.2s ease;
+  }
+
+  .mobile-menu a:first-child {
+    border-top: none;
+  }
+
+  .mobile-menu a:hover {
+    color: var(--accent);
+    background: var(--paper-soft);
+  }
 }
 
 /* ---------- Accueil / Hero ---------- */
@@ -203,7 +276,7 @@ img {
 /* ---------- Compétences (marquee) ---------- */
 
 #competences h2 {
-  font-size: 2rem;
+  font-size: clamp(1.6rem, 4vw, 2rem);
   margin-bottom: 48px;
 }
 
@@ -263,7 +336,7 @@ img {
 /* ---------- Services — liste éditoriale, pas des cartes ---------- */
 
 #services h2 {
-  font-size: 2rem;
+  font-size: clamp(1.6rem, 4vw, 2rem);
   margin-bottom: 12px;
 }
 
@@ -294,7 +367,7 @@ img {
 /* ---------- Témoignages ---------- */
 
 #temoignages h2 {
-  font-size: 2rem;
+  font-size: clamp(1.6rem, 4vw, 2rem);
   margin-bottom: 48px;
 }
 
@@ -329,63 +402,164 @@ img {
   font-size: 0.88rem;
 }
 
-/* ---------- Projets — blocs alternés ---------- */
+/* ---------- Projets — présentation premium ---------- */
+
+.projects-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 64px;
+}
+
+.section-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+}
 
 #projets h2 {
-  font-size: 2rem;
-  margin-bottom: 56px;
+  font-size: clamp(1.7rem, 4vw, 2.1rem);
+  margin: 0;
 }
 
 .project-image {
   display: flex;
   flex-direction: column;
-  gap: 96px;
+  gap: 120px;
 }
 
-.project-image .card {
+.project-card {
+  position: relative;
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: 1.15fr 0.85fr;
   gap: 56px;
   align-items: center;
   background: none;
+  padding-top: 8px;
 }
 
-.project-image .card:nth-child(even) {
+.project-card:nth-child(even) {
   direction: rtl;
 }
 
-.project-image .card:nth-child(even) > * {
+.project-card:nth-child(even) > * {
   direction: ltr;
 }
 
-.project-image .card img {
+.project-index {
+  position: absolute;
+  top: -32px;
+  left: 0;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+}
+
+.project-card:nth-child(even) .project-index {
+  left: auto;
+  right: 0;
+}
+
+/* Zone image : conteneur qui masque le voile + le zoom parallax */
+.project-media {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  isolation: isolate;
+}
+
+.project-media img {
   width: 100%;
   aspect-ratio: 16 / 11;
   object-fit: cover;
-  border-radius: 2px;
+  transform: scale(1.08);
+  transition: transform 1s cubic-bezier(0.19, 1, 0.22, 1);
+  will-change: transform;
 }
 
-.project-image .card h3 {
-  font-size: 1.6rem;
-  margin-bottom: 14px;
+.project-card:hover .project-media img {
+  transform: scale(1.16);
 }
 
-.project-image .card p {
+/* Voile animé par GSAP au scroll (scaleX 1 → 0) */
+.project-media-wipe {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: var(--ink);
+  transform-origin: left center;
+}
+
+.project-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--deep);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.project-card:hover .project-media::after {
+  opacity: 0.1;
+}
+
+.project-content h3 {
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  margin-bottom: 16px;
+  letter-spacing: -0.01em;
+}
+
+.project-content p {
   color: var(--ink-soft);
-  margin-bottom: 22px;
+  margin-bottom: 26px;
+  max-width: 48ch;
 }
 
-.project-image .card a {
-  display: inline-block;
+.project-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   border-bottom: 1px solid var(--accent);
   color: var(--accent);
-  padding-bottom: 2px;
+  padding-bottom: 4px;
   font-size: 0.95rem;
-  transition: opacity 0.2s ease;
+  width: fit-content;
 }
 
-.project-image .card a:hover {
-  opacity: 0.7;
+.project-link svg {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.3s ease;
+}
+
+.project-link:hover svg {
+  transform: translate(3px, -3px);
+}
+
+@media (max-width: 860px) {
+  .project-card,
+  .project-card:nth-child(even) {
+    grid-template-columns: 1fr;
+    direction: ltr;
+  }
+
+  .project-index,
+  .project-card:nth-child(even) .project-index {
+    position: static;
+    left: auto;
+    right: auto;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .project-image {
+    gap: 80px;
+  }
 }
 
 /* ---------- Contact — bande inversée ---------- */
@@ -400,7 +574,7 @@ img {
 
 #contact h2 {
   color: var(--deep-text);
-  font-size: 2.2rem;
+  font-size: clamp(1.6rem, 4.5vw, 2.2rem);
   max-width: 20ch;
   margin-bottom: 20px;
 }
@@ -461,9 +635,7 @@ img {
     order: -1;
   }
 
-  .services .card,
-  .project-image .card,
-  .project-image .card:nth-child(even) {
+  .services .card {
     grid-template-columns: 1fr;
     direction: ltr;
   }
@@ -480,6 +652,34 @@ img {
   #contact.container {
     padding: 56px 28px;
   }
+
+  .marquee-track .card {
+    margin: 0 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .testimonials {
+    gap: 40px;
+  }
+
+  .services .card {
+    padding: 28px 0;
+    gap: 12px;
+  }
+
+  #contact.container {
+    padding: 48px 24px;
+  }
+
+  .contact-links {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .contact-links a {
+    font-size: 1.15rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -487,12 +687,42 @@ img {
     padding: 16px 20px;
   }
 
-  .nav-links {
-    display: none;
-  }
-
   .button-container {
     flex-direction: column;
+  }
+
+  .container {
+    padding: 64px 20px;
+  }
+
+  .left-column p {
+    font-size: 1rem;
+  }
+
+  .marquee-track .card {
+    margin: 0 16px;
+  }
+
+  .marquee-track .card img {
+    width: 38px;
+    height: 38px;
+  }
+
+  .project-image {
+    gap: 56px;
+  }
+
+  .project-content p {
+    margin-bottom: 20px;
+  }
+
+  #contact.container {
+    padding: 40px 20px;
+    border-radius: 2px;
+  }
+
+  #contact p {
+    margin-bottom: 28px;
   }
 }
 
